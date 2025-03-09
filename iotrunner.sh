@@ -131,7 +131,6 @@ if [ "$confirm" = "yes" ] || [ "$confirm" = "y" ]; then
     echo -e "${GREEN}You can SSH into the droplet using the following command:${NC}"
     echo -e "${GREEN}ssh -i $KEY_PATH root@$DROPLET_IP${NC}"
     
-    # Add instructions for real-time monitoring of user_data output
     echo -e "${YELLOW}To check the complete log later by running: ssh -i $KEY_PATH root@$DROPLET_IP \"cat /var/log/user-data.log\"${NC}"
     
     echo -e "${YELLOW}Docker is installed on the droplet. You can now SCP your Compose files"
