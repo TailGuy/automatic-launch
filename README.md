@@ -56,7 +56,6 @@ The `main.tf` Terraform script provisions the DigitalOcean droplet:
 | Region                | Frankfurt 1 (fra1)                                                         |
 | Droplet Size          | 2 vCPUs, 4 GB RAM (s-2vcpu-4gb)                                            |
 | Monitoring            | True                                                                       |
-| Open Ports            | 22 (SSH), 3000 (Grafana), 1883 (MQTT), 8086 (InfluxDB), 9000 (Portainer)   |
 | Logging Location      | `/var/log/user-data.log`                                                   |
 | Pre-Installed Tools   | Docker, Docker Compose                                                     |
 - **User Data**: Installs Docker packages and creates a non-root user. You have to use the -y argument for install commands because it is a non interactable environment.
