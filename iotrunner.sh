@@ -27,21 +27,23 @@ upload_ssh_key() {
   local key_name="$2"
   local token="$3"
 
-  echo -e "${YELLOW}Checking if SSH key '$key_name' exists in DigitalOcean...${NC}"
+  # Redirect status messages to stderr so they don’t interfere with the function’s output
+  echo -e "${YELLOW}Checking if SSH key '$key_name' exists in DigitalOcean...${NC}" >&2
   EXISTING_KEYS=$(curl -X GET -H "Content-Type: application/json" -H "Authorization: Bearer $token" "https://api.digitalocean.com/v2/account/keys")
   FINGERPRINT=$(echo "$EXISTING_KEYS" | jq -r --arg pubkey "$pubkey" '.ssh_keys[] | select(.public_key == $pubkey) | .fingerprint')
 
   if [ -z "$FINGERPRINT" ]; then
-    echo -e "${YELLOW}Uploading SSH key '$key_name' to DigitalOcean...${NC}"
+    echo -e "${YELLOW}Uploading SSH key '$key_name' to DigitalOcean...${NC}" >&2
     API_RESPONSE=$(curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d "{\"name\":\"$key_name\",\"public_key\":\"$pubkey\"}" "https://api.digitalocean.com/v2/account/keys")
     FINGERPRINT=$(echo "$API_RESPONSE" | jq -r '.ssh_key.fingerprint')
     if [ -z "$FINGERPRINT" ]; then
-      echo -e "${RED}Failed to upload SSH key '$key_name' to DigitalOcean.${NC}"
+      echo -e "${RED}Failed to upload SSH key '$key_name' to DigitalOcean.${NC}" >&2
       exit 1
     fi
   else
-    echo -e "${GREEN}SSH key '$key_name' already exists in DigitalOcean.${NC}"
+    echo -e "${GREEN}SSH key '$key_name' already exists in DigitalOcean.${NC}" >&2
   fi
+  # Output only the fingerprint to stdout
   echo "$FINGERPRINT"
 }
 
@@ -129,11 +131,10 @@ fi
 cat << EOF > terraform.tfvars
 droplet_name     = "${DROPLET_NAME}"
 do_token         = "${DIGITALOCEAN_TOKEN}"
-ssh_public_keys  = ["$FINGERPRINT1", "$FINGERPRINT2"]
+ssh_public_keys  = ["${FINGERPRINT1}", "${FINGERPRINT2}"]
 EOF
 
 echo -e "${GREEN}Created terraform.tfvars file with droplet name, DO token, and SSH fingerprints.${NC}"
-
 # -------------------------------------------------------------------
 # Initialize Terraform and Create Plan
 # -------------------------------------------------------------------
