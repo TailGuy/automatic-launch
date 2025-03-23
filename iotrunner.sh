@@ -21,6 +21,30 @@ NC='\033[0m' # No Color
 
 echo -e "${YELLOW}Starting IoT infrastructure setup...${NC}"
 
+# Function to upload SSH key to DigitalOcean and retrieve its fingerprint
+upload_ssh_key() {
+  local pubkey="$1"
+  local key_name="$2"
+  local token="$3"
+
+  echo -e "${YELLOW}Checking if SSH key '$key_name' exists in DigitalOcean...${NC}"
+  EXISTING_KEYS=$(curl -X GET -H "Content-Type: application/json" -H "Authorization: Bearer $token" "https://api.digitalocean.com/v2/account/keys")
+  FINGERPRINT=$(echo "$EXISTING_KEYS" | jq -r --arg pubkey "$pubkey" '.ssh_keys[] | select(.public_key == $pubkey) | .fingerprint')
+
+  if [ -z "$FINGERPRINT" ]; then
+    echo -e "${YELLOW}Uploading SSH key '$key_name' to DigitalOcean...${NC}"
+    API_RESPONSE=$(curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d "{\"name\":\"$key_name\",\"public_key\":\"$pubkey\"}" "https://api.digitalocean.com/v2/account/keys")
+    FINGERPRINT=$(echo "$API_RESPONSE" | jq -r '.ssh_key.fingerprint')
+    if [ -z "$FINGERPRINT" ]; then
+      echo -e "${RED}Failed to upload SSH key '$key_name' to DigitalOcean.${NC}"
+      exit 1
+    fi
+  else
+    echo -e "${GREEN}SSH key '$key_name' already exists in DigitalOcean.${NC}"
+  fi
+  echo "$FINGERPRINT"
+}
+
 # -------------------------------------------------------------------
 # Prompt User for Droplet Name
 # -------------------------------------------------------------------
@@ -71,6 +95,12 @@ else
   echo -e "${YELLOW}Using existing SSH key: $KEY_PATH${NC}"
 fi
 
+PUBLIC_KEY=$(cat "${KEY_PATH}.pub")
+FINGERPRINT1=$(upload_ssh_key "$PUBLIC_KEY" "iot_droplet_key" "$DIGITALOCEAN_TOKEN")
+
+ADDITIONAL_PUBLIC_KEY="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDDhPFjyULsBXsBPR4YwSehdNdyl3yxqQBnVQrGGEDDSDdk13kRouWCHic8rvyb2lhTXX8nsIvOsUf7t+PsPVU4hkQybsZkl+wFvuN5Tr1mUz1hckK5TqybpQyVC/ROURUshxjZJo+s6lmgJLBcmXL8HwOK4FfVDLaMpaAHqH3hQvRu5vacn5iQqJs8b2dUVpdiRYKjfiAKCdnrcSXERrTd4hIYoFR+TMDBY8vCYXSkaK18AmonvhjdCUXNY/bY4V2NbTq+jtL+nL+cSR32YFgHwtAFZD9zsgt0jrJy/zwo2JJVDseAMOP25GL9xlqIDbq2dkqp7TIafWLJDrz0osTrpHAgS9kTQlyV12uPABpC7FOmDqQoaqJczwsd5LEduKhnleS6Xc4DrifV3FUXk6GgJuFGlTDv3d+2+eUtk6/iavTT3CjeFmSajlNpBDBEoxbXIgih2rCFosJ2eWC3R+aFAKnLzqYCc0m3EPI2K4HbnGnqecpw/PZNn4BI865I6rs= ubuntu@LAPTOP-K18V0M3F"
+FINGERPRINT2=$(upload_ssh_key "$ADDITIONAL_PUBLIC_KEY" "additional_key" "$DIGITALOCEAN_TOKEN")
+
 # Retrieve the public key content.
 PUBLIC_KEY=$(cat "${KEY_PATH}.pub")
 
@@ -99,10 +129,10 @@ fi
 cat << EOF > terraform.tfvars
 droplet_name     = "${DROPLET_NAME}"
 do_token         = "${DIGITALOCEAN_TOKEN}"
-ssh_public_keys  = ["$FINGERPRINT"]
+ssh_public_keys  = ["$FINGERPRINT1", "$FINGERPRINT2"]
 EOF
 
-echo -e "${GREEN}Created terraform.tfvars file with droplet name, DO token, and SSH fingerprint.${NC}"
+echo -e "${GREEN}Created terraform.tfvars file with droplet name, DO token, and SSH fingerprints.${NC}"
 
 # -------------------------------------------------------------------
 # Initialize Terraform and Create Plan
