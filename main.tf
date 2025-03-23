@@ -62,7 +62,7 @@ resource "digitalocean_droplet" "droplet" {
     apt-get update -y
 
     # Install prerequisites
-    apt-get install -y ca-certificates curl
+    apt-get install -y ca-certificates curl git
 
     # Create directory for Docker's GPG key
     install -m 0755 -d /etc/apt/keyrings
@@ -86,6 +86,15 @@ resource "digitalocean_droplet" "droplet" {
     # Verify Docker is running
     systemctl enable docker
     systemctl start docker
+
+    # Clone the GitHub repository
+    git clone https://github.com/TheGoodGamerGuy/DF-docker.git /root/DF-docker
+
+    # Navigate to the repository directory
+    cd /root/DF-docker
+
+    # Run Docker Compose to start the services
+    # docker compose up -d # TODO: add the environment variables for the docker compose
   EOF 
 }
 
@@ -129,6 +138,20 @@ resource "digitalocean_firewall" "services_firewall" {
   inbound_rule {
     protocol         = "tcp"
     port_range       = "9000"
+    source_addresses = ["0.0.0.0/0", "::/0"]
+  }
+
+  # Allow Loki traffic on port 3100
+  inbound_rule {
+    protocol         = "tcp"
+    port_range       = "3100"
+    source_addresses = ["0.0.0.0/0", "::/0"]
+  }
+
+  # Allow the fastapi app traffic on port 7080
+  inbound_rule {
+    protocol         = "tcp"
+    port_range       = "7080"
     source_addresses = ["0.0.0.0/0", "::/0"]
   }
 
