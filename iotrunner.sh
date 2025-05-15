@@ -47,6 +47,21 @@ upload_ssh_key() {
   echo "$FINGERPRINT"
 }
 
+
+# -------------------------------------------------------------------
+# Check .env file
+# -------------------------------------------------------------------
+# Check if .env file exists in the current directory
+ENV_FILE_PATH="$(pwd)/.env"
+HAVE_ENV_FILE=false
+
+if [ -f "$ENV_FILE_PATH" ]; then
+  HAVE_ENV_FILE=true
+  echo -e "${GREEN}Found .env file in current directory. This will be copied to the droplet.${NC}"
+else
+  echo -e "${YELLOW}No .env file found in current directory. The docker services might need manual configuration.${NC}"
+fi
+
 # -------------------------------------------------------------------
 # Prompt User for Droplet Name
 # -------------------------------------------------------------------
@@ -171,4 +186,11 @@ if [ "$confirm" = "yes" ] || [ "$confirm" = "y" ]; then
   fi
 else
   echo -e "${RED}Terraform apply canceled.${NC}"
+fi
+
+# After Terraform apply completes successfully
+if [ "$HAVE_ENV_FILE" == true ]; then
+  echo -e "${GREEN}The .env file has been copied to the /root/DF-docker directory on your droplet.${NC}"
+  echo -e "${YELLOW}To start the services with your environment configuration, run:${NC}"
+  echo -e "${GREEN}ssh -i $KEY_PATH root@$DROPLET_IP \"cd /root/DF-docker && docker compose up -d\"${NC}"
 fi

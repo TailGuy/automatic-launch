@@ -99,6 +99,33 @@ resource "digitalocean_droplet" "droplet" {
 }
 
 # -------------------------------------------------------------------
+# Copy .env file
+# -------------------------------------------------------------------
+# Provisioner for copying .env file if it exists locally
+resource "null_resource" "copy_env_file" {
+  count = fileexists("${path.module}/.env") ? 1 : 0
+  
+  triggers = {
+    droplet_id = digitalocean_droplet.droplet.id
+  }
+
+  connection {
+    type        = "ssh"
+    user        = "root"
+    host        = digitalocean_droplet.droplet.ipv4_address
+    private_key = file("~/.ssh/iot_droplet_key")
+  }
+
+  provisioner "file" {
+    source      = "${path.module}/.env"
+    destination = "/root/DF-docker/.env"
+  }
+
+  depends_on = [digitalocean_droplet.droplet]
+}
+
+
+# -------------------------------------------------------------------
 # Configure Firewall Rules
 # -------------------------------------------------------------------
 # Define firewall rules to control inbound and outbound traffic for the droplet.
