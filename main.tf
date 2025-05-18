@@ -44,7 +44,7 @@ provider "digitalocean" {
 # Provision a droplet with specified image, size, and SSH access.
 resource "digitalocean_droplet" "droplet" {
   name       = var.droplet_name
-  image      = "ubuntu-24-04-x64"
+  image      = "ubuntu-24-10-x64"
   region     = "fra1"
   size       = "s-2vcpu-4gb"
   monitoring = true
@@ -64,64 +64,45 @@ resource "digitalocean_droplet" "droplet" {
     # Install prerequisites
     apt-get install -y ca-certificates curl git
 
-    # Create directory for Docker's GPG key
+    # Setup Docker GPG key and repository
     install -m 0755 -d /etc/apt/keyrings
-
-    # Download and add Docker's GPG key
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
     chmod a+r /etc/apt/keyrings/docker.asc
-
-    # Add Docker repository to APT sources
-    echo \
-      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
-      $(source /etc/os-release && echo $UBUNTU_CODENAME) stable" | \
-      tee /etc/apt/sources.list.d/docker.list > /dev/null
-
-    # Update package list again with Docker repository
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(source /etc/os-release && echo $UBUNTU_CODENAME) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
     apt-get update -y
-
-    # Install Docker packages
     apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
-    # Verify Docker is running
     systemctl enable docker
     systemctl start docker
 
+    # Remove any pre-existing DF-docker directory.
+    rm -rf /root/DF-docker
+
     # Clone the GitHub repository
     git clone https://github.com/TheGoodGamerGuy/DF-docker.git /root/DF-docker
+
+    # If the .env file was uploaded to /root/.env, move it into the repository.
+    if [ -f /root/.env ]; then
+      mv /root/.env /root/DF-docker/.env
+    fi
 
     # Navigate to the repository directory
     cd /root/DF-docker
 
     # Run Docker Compose to start the services
-    # docker compose up -d # TODO: add the environment variables for the docker compose
+    # docker compose up -d
   EOF 
-}
-
-# -------------------------------------------------------------------
-# Copy .env file
-# -------------------------------------------------------------------
-# Provisioner for copying .env file if it exists locally
-resource "null_resource" "copy_env_file" {
-  count = fileexists("${path.module}/.env") ? 1 : 0
-  
-  triggers = {
-    droplet_id = digitalocean_droplet.droplet.id
-  }
 
   connection {
     type        = "ssh"
     user        = "root"
-    host        = digitalocean_droplet.droplet.ipv4_address
+    host        = self.ipv4_address
     private_key = file("~/.ssh/iot_droplet_key")
   }
 
   provisioner "file" {
     source      = "${path.module}/.env"
-    destination = "/root/DF-docker/.env"
+    destination = "/root/.env"
   }
-
-  depends_on = [digitalocean_droplet.droplet]
 }
 
 
