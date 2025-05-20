@@ -78,7 +78,7 @@ resource "digitalocean_droplet" "droplet" {
     rm -rf /root/DF-docker
 
     # Clone the GitHub repository
-    git clone https://github.com/TheGoodGamerGuy/DF-docker.git /root/DF-docker
+    git clone --recurse-submodules -j8 https://github.com/TheGoodGamerGuy/DF-docker.git /root/DF-docker
 
     # If the .env file was uploaded to /root/.env, move it into the repository.
     if [ -f /root/.env ]; then
@@ -89,7 +89,7 @@ resource "digitalocean_droplet" "droplet" {
     cd /root/DF-docker
 
     # Run Docker Compose to start the services
-    # docker compose up -d
+    # docker compose up -d --build
   EOF 
 
   connection {
