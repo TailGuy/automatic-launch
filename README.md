@@ -22,6 +22,12 @@ cd into the directory:
 ```bash
 cd ./automatic-launch
 ```
+> [!WARNING]
+> Make sure to create a `.env` file by using the `.envtemplate`
+> ```
+> cp ./.envtemplate ./.env
+> sudo nano .env
+> ```
 Ensure the iotrunner.sh script is executable by running:
 ```bash
 sudo chmod +x ./iotrunner.sh
