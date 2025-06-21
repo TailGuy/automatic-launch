@@ -76,7 +76,7 @@ The `main.tf` Terraform script provisions the DigitalOcean droplet:
 | 1883 | MQTT      |
 | 8086 | InfluxDB  |
 | 9000 | Portainer |
-#####TODO For production remove all inbound rules except for SSH
+##### TODO For production remove all inbound rules except for SSH
 #### Outbound Rules
 All TCP and UDP traffic is allowed to any destination.
 
