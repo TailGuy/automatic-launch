@@ -1,5 +1,5 @@
 # Automatic DigitalOcean droplet launching
-This documentation helps you set up an IoT droplet on DigitalOcean using the "Automatic Launch" script and TerraForm configuration. It’s designed to make the process smooth, handling everything from SSH keys to deploying your droplet.
+This script helps you set up an IoT droplet on DigitalOcean using the "Automatic Launch" script and TerraForm configuration. It’s designed to make the process smooth, handling everything from SSH keys to deploying your droplet.
 - [Prerequisites](#prerequisites)
 - [Getting Started](#getting-started)
 - [About](#about)
