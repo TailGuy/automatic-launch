@@ -78,7 +78,8 @@ resource "digitalocean_droplet" "droplet" {
     rm -rf /root/DF-docker
 
     # Clone the GitHub repository
-    git clone --recurse-submodules -j8 https://github.com/TheGoodGamerGuy/DF-docker.git /root/DF-docker
+    # --recurse-submodules -j8 # test
+    git clone --recursive https://github.com/TailGuy/DF-docker.git /root/DF-docker
 
     # If the .env file was uploaded to /root/.env, move it into the repository.
     if [ -f /root/.env ]; then
