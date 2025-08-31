@@ -16,7 +16,7 @@ Before proceeding, you must make sure that
 ## Getting Started
 Clone the repository:
 ```bash
-git clone https://github.com/TheGoodGamerGuy/automatic-launch.git
+git clone https://github.com/TailGuy/automatic-launch.git
 ```
 cd into the directory:
 ```bash
