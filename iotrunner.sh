@@ -59,7 +59,8 @@ if [ -f "$ENV_FILE_PATH" ]; then
   HAVE_ENV_FILE=true
   echo -e "${GREEN}Found .env file in current directory. This will be copied to the droplet.${NC}"
 else
-  echo -e "${YELLOW}No .env file found in current directory. The docker services might need manual configuration.${NC}"
+  echo -e "${RED}No .env file found in current directory. Aborting.${NC}"
+  exit 1
 fi
 
 # -------------------------------------------------------------------
@@ -79,6 +80,27 @@ read DIGITALOCEAN_TOKEN
 echo ""
 
 # -------------------------------------------------------------------
+# Check if Droplet Name Already Exists
+# -------------------------------------------------------------------
+echo -e "${YELLOW}Checking if a droplet named '$DROPLET_NAME' already exists...${NC}"
+DROPLETS=$(curl -s -X GET -H "Content-Type: application/json" -H "Authorization: Bearer $DIGITALOCEAN_TOKEN" "https://api.digitalocean.com/v2/droplets")
+
+# Validate API response
+if ! echo "$DROPLETS" | jq -e '.droplets' >/dev/null 2>&1; then
+  ERROR_MESSAGE=$(echo "$DROPLETS" | jq -r '.message // "Unknown API error"')
+  echo -e "${RED}DigitalOcean API error: $ERROR_MESSAGE. Check your token.${NC}"
+  exit 1
+fi
+
+EXISTING_DROPLET=$(echo "$DROPLETS" | jq -r --arg name "$DROPLET_NAME" '.droplets[] | select(.name == $name) | .name')
+
+if [ -n "$EXISTING_DROPLET" ]; then
+  echo -e "${RED}A droplet named '$DROPLET_NAME' already exists. Aborting to prevent conflicts.${NC}"
+  exit 1
+fi
+echo -e "${GREEN}No existing droplet found with name '$DROPLET_NAME'. Proceeding.${NC}"
+
+# -------------------------------------------------------------------
 # Install or Update Terraform and jq
 # -------------------------------------------------------------------
 # Install Terraform for infrastructure management and jq for JSON parsing of API responses.
@@ -93,6 +115,10 @@ sudo apt-add-repository \
   $(lsb_release -cs) main"
 sudo apt-get update -y
 sudo apt-get install -y terraform
+
+# Initialize Terraform to download required providers and modules.
+echo -e "${YELLOW}Initializing Terraform...${NC}"
+terraform init
 
 # -------------------------------------------------------------------
 # Manage SSH Key for Droplet Access
@@ -139,6 +165,8 @@ else
   echo -e "${GREEN}SSH key already exists in DigitalOcean.${NC}"
 fi
 
+
+
 # -------------------------------------------------------------------
 # Create terraform.tfvars File with User-Provided Values
 # -------------------------------------------------------------------
@@ -150,6 +178,18 @@ ssh_public_keys  = ["${FINGERPRINT1}", "${FINGERPRINT2}"]
 EOF
 
 echo -e "${GREEN}Created terraform.tfvars file with droplet name, DO token, and SSH fingerprints.${NC}"
+
+# -------------------------------------------------------------------
+# Set Up Per-Droplet State File
+# -------------------------------------------------------------------
+mkdir -p states
+STATE_FILE="states/${DROPLET_NAME}.tfstate"
+
+if [ -f "$STATE_FILE" ]; then
+  echo -e "${YELLOW}Existing state file found for '$DROPLET_NAME'. Removing to create a new one.${NC}"
+  rm "$STATE_FILE"
+fi
+
 # -------------------------------------------------------------------
 # Initialize Terraform and Create Plan
 # -------------------------------------------------------------------
@@ -157,9 +197,11 @@ echo -e "${GREEN}Created terraform.tfvars file with droplet name, DO token, and 
 echo -e "${YELLOW}Initializing Terraform...${NC}"
 terraform init
 
+
+
 # Generate an execution plan and save it to a file.
 echo -e "${YELLOW}Creating Terraform plan...${NC}"
-terraform plan -out=tfplan
+terraform plan -state="$STATE_FILE" -out=tfplan
 
 # -------------------------------------------------------------------
 # Prompt User to Apply the Terraform Plan
@@ -168,11 +210,11 @@ terraform plan -out=tfplan
 read -p "Do you want to apply the Terraform plan? (yes/no): " confirm
 if [ "$confirm" = "yes" ] || [ "$confirm" = "y" ]; then
   echo -e "${YELLOW}Applying Terraform plan...${NC}"
-  terraform apply tfplan
+  terraform apply -state="$STATE_FILE" tfplan
 
   if [ $? -eq 0 ]; then
     echo -e "${GREEN}Terraform apply completed successfully!${NC}"
-    DROPLET_IP=$(terraform output -raw droplet_ip)
+    DROPLET_IP=$(terraform output -state="$STATE_FILE" -raw droplet_ip)
     echo -e "${GREEN}Droplet IP: $DROPLET_IP${NC}"
     echo -e "${GREEN}You can SSH into the droplet using the following command:${NC}"
     echo -e "${GREEN}ssh -i $KEY_PATH root@$DROPLET_IP${NC}"
